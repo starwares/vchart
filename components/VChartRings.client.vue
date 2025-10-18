@@ -2,35 +2,54 @@
 import { ref, onMounted, onBeforeUnmount, watchEffect } from 'vue'
 import VChart from '@visactor/vchart'
 import type { ISpec } from '@visactor/vchart'
+import { convertVChartToSvg } from '@visactor/vchart-svg-plugin';
 
 const container = ref<HTMLDivElement | null>(null)
 let vchart: VChart | null = null
 
-// 🎨 Палитра
+// 🎨 Палитра (из твоего варианта, без изменений)
 const COLORS = {
   opened: '#2196F3',
+  bg_opened: '#E3F2FD',
+
   clicked: '#FFC340',
+  bg_clicked: '#F5A623',
+
   sent_notify: '#2E93E5',
+  sent_notify_alarm: '#ECC424',
+  bg_sent_notify: '#A7D3F2',
+
   no_sent_notify: '#ffae00',
   no_sent_notify_alarm: '#FF7400',
+  bg_no_sent_notify: '#A7D3F2',
+
   submitted: '#F44336',
+  bg_submitted: '#FFF3E0',
+
   sessions: '#D84A4A',
+  bg_sessions: '#FFEBEE',
+
+  pswd_change: '#FFEBEE',
+  bg_pswd_change: '#FFEBEE',
+
   no_pswd_change: '#7A1E1E',
-  white: '#FFFFFF'
+  bg_no_pswd_change: '#FFEBEE',
+
+  white: '#FFFFFF',
+  black: '#000000'
 } as const
 
-type ColorKey = keyof typeof COLORS
-
+// 🎯 Функция разрешения цвета — используем строго твою логику
 function resolveColor(input?: string): string | undefined {
-  if (!input) return undefined
-  const s = input.trim().toLowerCase() as ColorKey
-  if (COLORS[s]) return COLORS[s]
-  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s)) return s
-  if (/^rgba?\(/i.test(s)) return s
-  return undefined
+  if (!input) return undefined;
+  const s = input.trim().toLowerCase();
+  if (COLORS[s as keyof typeof COLORS]) return COLORS[s as keyof typeof COLORS];
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s)) return s;
+  if (/^rgba?\(/i.test(s)) return s;
+  return undefined;
 }
 
-// 📊 Данные
+// 📊 Данные (точно из твоего примера)
 const data = [
   {
     id: 'id0',
@@ -38,60 +57,62 @@ const data = [
       { type: 'Переходов по ссылке', value: 42, color: 'clicked' },
       { type: 'Переходов по ссылке', value: 7, color: 'clicked' },
       { type: 'Переходов по ссылке', value: 336 - 132 - 49, color: 'clicked' },
-      { type: 'Переходов по ссылке', value: 132, color: 'clicked' }
+      { type: 'Переходов по ссылке', value: 132, color: 'clicked' },
     ]
   },
   {
     id: 'id1',
     values: [
-      { type: 'Не уведомили ИБ ', value: 42, color: 'no_sent_notify_alarm' },
-      { type: 'Не уведомили ИБ ', value: 7, color: 'no_sent_notify_alarm' },
-      { type: 'Не уведомили ИБ', value: 336 - 132 - 49, color: 'no_sent_notify' },
-      { type: 'Уведомили ИБ', value: 132, color: 'sent_notify' }
+      { type: 'Не уведомили ИБ', value: 204, color: 'no_sent_notify' },
+      { type: 'Уведомили ИБ', value: 132, color: 'clicked' },
     ]
   },
   {
     id: 'id2',
     values: [
-      { type: 'Перехвачено данных', value: 42, color: 'submitted' },
-      { type: 'Перехвачено данных', value: 7, color: 'submitted' },
-      { value: 280, color: 'white' },
-      { type: 'Перехвачено данных', value: 7, color: 'submitted' }
+      { type: 'Не уведомили ИБ ', value: 42, color: 'no_sent_notify_alarm' },
+      { type: 'Не уведомили ИБ ', value: 7, color: 'no_sent_notify_alarm' },
+      { type: 'Не уведомили ИБ', value: 336 - 132 - 49, color: 'no_sent_notify' },
+      { type: 'Уведомили ИБ', value: (132 - 7), color: 'sent_notify' },
+      { type: 'Уведомили ИБ ', value: 7, color: 'sent_notify_alarm' },
     ]
   },
   {
     id: 'id3',
     values: [
-      { type: 'Перехвачено сессий', value: 42, color: 'sessions' },
-      { type: 'Перехвачено сессий', value: 5, color: 'sessions' },
-      { value: 282, color: 'white' },
-      { type: 'Перехвачено сессий', value: 7, color: 'sessions' }
+      { type: 'Перехвачено данных', value: 42, color: 'submitted' },
+      { type: 'Перехвачено данных', value: 7, color: 'submitted' },
+      { value: 280, color: 'white' },
+      { type: 'Перехвачено данных', value: 7, color: 'submitted' },
     ]
   },
   {
     id: 'id4',
     values: [
-      { type: 'Не сменило пароль', value: 42, color: 'no_pswd_change' },
+      { type: 'Перехвачено сессий', value: 42, color: 'sessions', showLabel: false },
+      { type: 'Перехвачено сессий', value: 5, color: 'sessions' },
+      { value: 282, color: 'white' },
+      { type: 'Перехвачено сессий', value: 7, color: 'sessions' },
+    ]
+  },
+  {
+    id: 'id5',
+    values: [
+      { id: 1, type: 'Не сменило пароль', value: 42, color: 'no_pswd_change' },
       { value: 290, color: 'white' },
-      { type: 'Не сменило пароль', value: 4, color: 'no_pswd_change' }
+      { id: 2, type: 'Не сменило пароль', value: 4, color: 'no_pswd_change' }
     ]
   }
-]
+];
 
-// 🧩 служебные плейсхолдеры
-const FILLER = '__filler__'
-for (const ds of data.slice(2)) {
+const FILLER = '__white__'
+
+// проставляем type плейсхолдерам (там, где его нет)
+for (const ds of data) {
   ds.values = ds.values.map(v => (v.type ? v : { ...v, type: FILLER }))
 }
 
-// добавляем уникальные идентификаторы сегментам
-data.forEach(ds => {
-  ds.values.forEach((v, idx) => {
-    v.uid = `${ds.id}_${idx}`
-  })
-})
-
-// 🧠 соответствие цветов
+// пересобираем сопоставление type -> color, включая плейсхолдер
 const typeToColor: Record<string, string> = {}
 for (const ds of data) {
   for (const v of ds.values) {
@@ -99,210 +120,239 @@ for (const ds of data) {
     if (resolved && v.type) typeToColor[v.type] = resolved
   }
 }
+// явно фиксируем белый для тех.типа
 typeToColor[FILLER] = '#FFFFFF'
 
 const domain = Object.keys(typeToColor)
 const range = domain.map(d => typeToColor[d])
 
-function shouldShowLabel(d: any) {
-  return false
-  const t = d?.type ?? d?.datum?.type
-  const v = d?.value ?? d?.datum?.value
-  // не показываем подписи для плейсхолдеров и белых сегментов
-  if (!t || t === '__filler__' || t === 'white') return false
-  // например: скрываем метки для "Перехвачено данных"
-  if (v === 5 || v === 7) return true
-  else
-    return false
-}
-
 // 📈 Конфигурация графика
 const spec: ISpec = {
-  type: 'common',
+  type: 'pie',
   data,
   scales: [
-    { id: 'color', type: 'ordinal', field: 'type', domain, range }
+    {
+      id: 'color',
+      type: 'ordinal',
+      field: 'type',
+      domain,
+      range
+    }
   ],
   series: [
     {
       type: 'pie',
       dataIndex: 0,
-      outerRadius: 0.45,
+      outerRadius: 0.43,
       innerRadius: 0.35,
       valueField: 'value',
       categoryField: 'type',
-      encode: { angle: 'value', id: 'uid' },
-      padAngle: 0.45,
-      pie: {
-        style: (d: any) =>
-          d.type === FILLER
-            ? { fillOpacity: 0, strokeOpacity: 0 }
-            : {
-              fill: { field: 'type', scale: 'color' },
-              stroke: '#fff',
-              lineWidth: 2,
-              cornerRadius: 3
-            }
+      padAngle: 0.08,
+      label: {
+        visible: false,
+        formatter: '{type}',
+        position: 'inside',
+        rotate: false
       },
-      label: { visible: false }
+      pie: {
+        style: { stroke: '#ffffff', lineWidth: 2 }
+      }
     },
     {
       type: 'pie',
       dataIndex: 1,
-      outerRadius: 0.60,
-      innerRadius: 0.47,
+      outerRadius: 0.5,
+      innerRadius: 0.45,
       valueField: 'value',
       categoryField: 'type',
-      encode: { angle: 'value', id: 'uid' },
-      padAngle: 0.05,
-      pie: {
-        style: {
-          fill: { field: 'type', scale: 'color' },
-          stroke: '#fff',
-          lineWidth: 2,
-          cornerRadius: 3
-        }
-      },
+      padAngle: 0.08,
       label: {
-
         visible: true,
         formatter: '{_percent_}%',
-        style: { fill: '#000', fontWeight: 'bold', fontSize: 10 }
+        position: 'inside-inner',
+        offsetRadius: 0,
+        rotate: false,
+        line: { visible: true },
+        style: {
+          stroke: 'white',
+          lineWidth: 3,
+          strokeOpacity: 0,
+          fontSize: 14,
+          fontWeight: 'bold'
+        }
+      },
+      pie: {
+        style: { stroke: '#ffffff', lineWidth: 2 }
       }
     },
     {
       type: 'pie',
       dataIndex: 2,
-      outerRadius: 0.78,
-      innerRadius: 0.62,
+      outerRadius: 0.6,
+      innerRadius: 0.47,
       valueField: 'value',
       categoryField: 'type',
-      encode: { angle: 'value', id: 'uid' },
-      padAngle: 0.05,
-      pie: {
+      padAngle: 0.08,
+      label: {
+        visible: true,
+        formatter: '{_percent_}%',
+        position: 'outside',
+        rotate: false,
+        offsetRadius: 20,
+        line: {
+          visible: true,
+          smooth: false,
+        },
         style: {
-          fill: { field: 'type', scale: 'color' },
-          stroke: '#fff',
-          lineWidth: 2,
-          cornerRadius: 3
+          stroke: "white",
+          lineWidth: 3,
+          strokeOpacity: 1,
+          fontSize: 14,
+          fontWeight: 'bold'
         }
       },
-
-      label: {
-
-
-        line: {
-          visible: false, // для маленьких — линия
-        },
-        visible: true,            // включаем метки в серии
-        // formatter НЕ указываем — чтобы ничего не перетирало formatMethod
-
-        formatMethod: (text: string, data: any) => {
-          const d = data?.datum ?? data
-          const t = d?.type
-          const v = d?.value
-
-          // прячем filler/white
-          if (!t || t === '__filler__' || t === 'white') return undefined
-
-          // показываем ТОЛЬКО для нужных значений (пример: 5 и 7)
-          if (v === 5 || v === 7) {
-            // _percent_ в v2 обычно уже в процентах (83.93), но подстрахуемся
-            const raw = typeof data?._percent_ === 'number' ? data._percent_ : 0
-            const perc = raw > 1.0001 ? raw : raw * 100
-            return `${v}(${perc.toFixed(2)})%`
-          }
-
-          return undefined
-        },
-        style: { fill: '#000', fontWeight: 'bold', fontSize: 10 }
+      pie: {
+        style: { stroke: '#ffffff', lineWidth: 2 }
       }
     },
     {
       type: 'pie',
       dataIndex: 3,
-      outerRadius: 1.0,
-      innerRadius: 0.80,
+      outerRadius: 0.78,
+      innerRadius: 0.62,
       valueField: 'value',
       categoryField: 'type',
-      encode: { angle: 'value', id: 'uid' },
-      padAngle: 0.05,
-      pie: {
+      padAngle: 0.08,
+      label: {
+        visible: true,
+        formatter: '{value} ({_percent_}%)',
+        position: 'outside',
         style: {
-          fill: { field: 'type', scale: 'color' },
-          stroke: '#fff',
-          lineWidth: 2,
-          cornerRadius: 3
+          stroke: "white",
+          lineWidth: 3,
+          strokeOpacity: 1,
+          fontSize: 14,
+          fontWeight: 'bold'
         }
       },
-      label: {
-        visible: true,            // включаем метки в серии
-        // formatter НЕ указываем — чтобы ничего не перетирало formatMethod
-        formatMethod: (text: string, data: any) => {
-          const d = data?.datum ?? data
-          const t = d?.type
-          const v = d?.value
-
-          // прячем filler/white
-          if (!t || t === '__filler__' || t === 'white') return ''
-
-          // показываем ТОЛЬКО для нужных значений (пример: 5 и 7)
-          if (v === 5 || v === 7) {
-            // _percent_ в v2 обычно уже в процентах (83.93), но подстрахуемся
-            const raw = typeof data?._percent_ === 'number' ? data._percent_ : 0
-            const perc = raw > 1.0001 ? raw : raw * 100
-            return `${perc.toFixed(2)}%`
-          }
-
-          // для остальных — пусто (ничего не рисуем)
-          return ''
-        },
-        style: { fill: '#000', fontWeight: 'bold', fontSize: 10 }
+      pie: {
+        style: { stroke: '#ffffff', lineWidth: 2 }
       }
     },
     {
       type: 'pie',
       dataIndex: 4,
+      outerRadius: 1,
+      innerRadius: 0.8,
+      valueField: 'value',
+      categoryField: 'type',
+      padAngle: 0.08,
+      label: {
+        visible: true,
+        showEmptyCircle: true,
+        formatter: '{_percent_}%',
+        position: 'outside',
+        style: {
+          stroke: "white",
+          lineWidth: 3,
+          strokeOpacity: 1,
+          fontSize: 14,
+          fontWeight: 'bold'
+        }
+      },
+      pie: {
+        style: { stroke: '#ffffff', lineWidth: 2 }
+      }
+    },
+    {
+      type: 'pie',
+      dataIndex: 5,
       outerRadius: 1.25,
       innerRadius: 1.02,
       valueField: 'value',
       categoryField: 'type',
-      encode: { angle: 'value', id: 'uid' },
-      padAngle: 0.05,
-      pie: {
+      padAngle: 0.08,
+      label: {
+        visible: true,
+        formatter: '{_percent_}%',
+        position: 'outside',
         style: {
-          fill: { field: 'type', scale: 'color' },
-          stroke: '#fff',
-          lineWidth: 2,
-          cornerRadius: 3
+          stroke: "white",
+          lineWidth: 3,
+          strokeOpacity: 1,
+          fontSize: 14,
+          fontWeight: 'bold'
         }
       },
-      label: {
-        visible: true,            // включаем метки в серии
-        // formatter НЕ указываем — чтобы ничего не перетирало formatMethod
-        formatMethod: (text: string, data: any) => {
-          const d = data?.datum ?? data
-          const t = d?.type
-          const v = d?.value
-
-          // прячем filler/white
-          if (!t || t === '__filler__' || t === 'white') return ''
-
-          // показываем ТОЛЬКО для нужных значений (пример: 5 и 7)
-          if (v === 4 || v === 7) {
-            // _percent_ в v2 обычно уже в процентах (83.93), но подстрахуемся
-            const raw = typeof data?._percent_ === 'number' ? data._percent_ : 0
-            const perc = raw > 1.0001 ? raw : raw * 100
-            return `${perc.toFixed(2)}%`
-          }
-
-          // для остальных — пусто (ничего не рисуем)
-          return ''
-        },
-        style: { fill: '#000', fontWeight: 'bold', fontSize: 10 }
+      pie: {
+        style: { stroke: '#ffffff', lineWidth: 2 }
       }
     }
   ],
+  indicator: {
+    visible: true,
+    trigger: 'hover',
+    limitRatio: 0.4, // same as inner radius
+    title: {
+      visible: true,
+      autoFit: true,
+      fitStrategy: 'inscribed',
+      style: {
+        fontWeight: 'bolder',
+        fontFamily: 'Times New Roman',
+        fill: '#888',
+        text: datum => {
+          const d = datum ?? data[0];
+          return d['formula'];
+        }
+      }
+    },
+    content: [
+      {
+        visible: true,
+        autoFit: false,
+        fitStrategy: 'inscribed',
+        style: {
+          fontSize: 50,
+          fill: 'black',
+          fontWeight: 'bolder',
+          fontFamily: 'Times New Roman',
+          text: "366"
+        }
+      },
+      {
+        visible: true,
+        autoFit: false,
+        fitStrategy: 'inscribed',
+        style: {
+          fill: 'black',
+          fontSize: 15,
+          fontFamily: 'Times New Roman',
+          text: "Переходов по ссылке"
+        }
+      },
+      {
+        visible: false,
+        autoFit: true,
+        fitStrategy: 'inscribed',
+        style: {
+          fill: 'orange',
+          fontFamily: 'Times New Roman',
+          text: datum => {
+            const d = datum ?? data[0];
+            return d['value'] + '%';
+          }
+        }
+      }
+    ]
+  },
+  title: {
+    visible: false,
+    text: 'Population Distribution by Age in the United States, 2021 (in millions)',
+    textStyle: {
+      fontFamily: 'Times New Roman'
+    }
+  },
   legends: {
     visible: true,
     orient: 'left',
@@ -310,49 +360,78 @@ const spec: ISpec = {
       .filter(label => label !== FILLER)
       .map(label => ({ label, shape: { fill: typeToColor[label] } }))
   },
-  indicator: {
-    visible: true,
-    trigger: 'hover',
-    title: { visible: false },
-    content: [
-      {
-        visible: true,
-        autoFit: false,
-        style: {
-          fill: 'black',
-          fontWeight: 'bolder',
-          fontFamily: 'Times New Roman',
-          fontSize: 24,
-          text: '366'
-        }
-      },
-      {
-        visible: true,
-        autoFit: false,
-        style: {
-          fill: 'black',
-          fontFamily: 'Times New Roman',
-          fontSize: 18,
-          text: 'Переходов по ссылке'
-        }
-      }
-    ]
-  }
+} as unknown as ISpec
+function downloadTextAsFile(text: string, filename = 'image.svg') {
+  const blob = new Blob([text], { type: 'image/svg+xml;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
+
+function vchartToPngDataURL(vchart: any): string | null {
+  const stage = vchart?.getStage?.();
+  const canvas = stage?.getNativeHandler?.() ?? stage?.toCanvas() // в разных версиях может отличаться
+  if (!canvas) return null;
+  return canvas.toDataURL('image/png');
+}
 // 🧩 Рендер
-onMounted(() => {
-  watchEffect(() => {
+onMounted(async () => {
+  watchEffect(async () => {
     if (!container.value) return
+    // уничтожаем предыдущий инстанс, если есть
     vchart?.release?.()
-    vchart = new VChart(spec, { dom: container.value })
+
+    // создаем новый
+    vchart = new VChart(spec, {
+      dom: container.value,
+      animation: false
+    });
+
     vchart.renderSync()
+    function sleep(ms: number) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /* await sleep(1000); */ // ждём пока график полностью отрисуется
+    /* const svgContent = convertVChartToSvg(vchart)
+    downloadTextAsFile(svgContent, 'image.svg') */
+    /*  const dataUrl = vchartToPngDataURL(vchart);
+     if (dataUrl) {
+       // 1) вставить в <img>
+       const img = document.createElement('img');
+       img.src = dataUrl;
+       document.body.appendChild(img);
+ 
+       // 2) скачать как файл
+       const a = document.createElement('a');
+       a.href = dataUrl;
+       a.download = 'chart.png';
+       a.click();
+     } */
+
   })
+
+  function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
 })
+
+
 
 onBeforeUnmount(() => vchart?.release?.())
 </script>
 
 <template>
-  <div ref="container" style="width:800px;height:500px;margin:auto;display:block"></div>
+  
+  <div 
+    ref="container"
+    style="width: 800px; height: 500px; margin: auto; display: block"
+  ></div>
+  
 </template>
